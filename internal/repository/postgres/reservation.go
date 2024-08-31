@@ -2,8 +2,6 @@ package postgres
 
 import (
 	"context"
-	"errors"
-
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/saveAsPerfect/booking-system/internal/models"
 	"github.com/saveAsPerfect/booking-system/internal/repository"
@@ -94,7 +92,7 @@ func (r *PostgresRepository) CheckReservation(ctx context.Context, reservation m
 	}
 
 	if len(existingReservations) > 0 {
-		return errors.New("the room is reserved for this time")
+		return models.ErrorRoomAlreadyReserved
 	}
 	return nil
 }

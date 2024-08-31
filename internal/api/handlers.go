@@ -2,8 +2,9 @@ package api
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
-
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/saveAsPerfect/booking-system/internal/models"
 	"github.com/saveAsPerfect/booking-system/internal/service"
@@ -21,13 +22,15 @@ func NewHandler(service *service.ReservationService) *Handler {
 func (h *Handler) CreateReservation(w http.ResponseWriter, r *http.Request) {
 	var reservation models.Reservation
 	if err := json.NewDecoder(r.Body).Decode(&reservation); err != nil {
+		log.Print(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	err := h.service.CreateReservation(r.Context(), reservation)
 	if err != nil {
-		if err.Error() == "the room is reserved for this time" {
+		if errors.Is(err, models.ErrorRoomAlreadyReserved) {
+			log.Println(err)
 			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
@@ -42,6 +45,7 @@ func (h *Handler) GetReservations(w http.ResponseWriter, r *http.Request) {
 	roomID := chi.URLParam(r, "room_id")
 	reservations, err := h.service.GetReservations(r.Context(), roomID)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

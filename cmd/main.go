@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/saveAsPerfect/booking-system/internal/api"
@@ -16,7 +18,6 @@ import (
 func main() {
 
 	cfg := config.MustLoad()
-	
 	dsn := fmt.Sprintf("postgres://%s:%v@%s:%v/%s?sslmode=%s",
 		cfg.DB.User,
 		cfg.DB.Password,
@@ -30,19 +31,37 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
-	defer pool.Close()
 
 	repo := postgres.NewPostgresRepository(pool)
 	service := service.NewReservationService(repo)
 	handler := api.NewHandler(service)
 	router := api.SetupRouter(handler)
 
-	log.Printf("Starting server on :%s", cfg.Server.Port)
-	if err := http.ListenAndServe(":"+cfg.Server.Port, router); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+	quit := make(chan os.Signal, 1)
+
+	srv := &http.Server{
+		Addr:           ":" + cfg.Server.Port,
+		Handler:        router,
+		MaxHeaderBytes: 1 << 20, // 1 MB
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
 	}
-	// TODD: add logger
-	// TODO: gracefull shutdown
-	// TODO: close db
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			log.Println("failed to start server: ", err)
+		}
+	}()
+
+	log.Printf("Starting server on %s:%s", cfg.Server.Host, cfg.Server.Port)
+
+	<-quit
+	log.Println("stopping server")
+
+	if err := srv.Shutdown(context.Background()); err != nil {
+		log.Println("error on server shutting down:", err.Error())
+	}
+
+	pool.Close()
 
 }

@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgres://user:password@db:5432/bookings?sslmode=disable
+      - SERVER_PORT=8080
+      - SERVER_READ_TIMEOUT=15s
+      - SERVER_WRITE_TIMEOUT=15s
+      - DB_MAX_OPEN_CONNS=25
+      - DB_MAX_IDLE_CONNS=25
+      - DB_CONN_MAX_LIFETIME=5m
+    depends_on:
+      - db
+
+  db:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=123
+      - POSTGRES_DB=booking_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  pgdata:

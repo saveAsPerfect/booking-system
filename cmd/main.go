@@ -1,10 +1,10 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"net/http"
-
-	"context"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/saveAsPerfect/booking-system/internal/api"
@@ -16,9 +16,17 @@ import (
 func main() {
 
 	cfg := config.MustLoad()
+	
+	dsn := fmt.Sprintf("postgres://%s:%v@%s:%v/%s?sslmode=%s",
+		cfg.DB.User,
+		cfg.DB.Password,
+		cfg.DB.Host,
+		cfg.DB.Port,
+		cfg.DB.DBName,
+		cfg.DB.SSLMode,
+	)
 
-	connString := "postgres://postgres:123@localhost:5432/bookings?sslmode=disable"
-	pool, err := pgxpool.New(context.Background(), connString)
+	pool, err := pgxpool.New(context.Background(), dsn)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
@@ -33,4 +41,8 @@ func main() {
 	if err := http.ListenAndServe(":"+cfg.Server.Port, router); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
+	// TODD: add logger
+	// TODO: gracefull shutdown
+	// TODO: close db
+
 }

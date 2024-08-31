@@ -17,6 +17,7 @@ func NewHandler(service *service.ReservationService) *Handler {
 	return &Handler{service: service}
 }
 
+
 func (h *Handler) CreateReservation(w http.ResponseWriter, r *http.Request) {
 	var reservation models.Reservation
 	if err := json.NewDecoder(r.Body).Decode(&reservation); err != nil {
@@ -26,7 +27,7 @@ func (h *Handler) CreateReservation(w http.ResponseWriter, r *http.Request) {
 
 	err := h.service.CreateReservation(r.Context(), reservation)
 	if err != nil {
-		if err.Error() == "reservation overlaps with existing booking" {
+		if err.Error() == "the room is reserved for this time" {
 			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}

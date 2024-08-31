@@ -24,19 +24,6 @@ func (r *PostgresRepository) CreateReservation(ctx context.Context, reservation 
 	}
 	defer tx.Rollback(ctx)
 
-	var count int
-	err = tx.QueryRow(ctx, `
-		SELECT COUNT(*) FROM reservations
-		WHERE room_id = $1 AND
-		      ((start_time, end_time) OVERLAPS ($2, $3))
-	`, reservation.RoomID, reservation.StartTime, reservation.EndTime).Scan(&count)
-	if err != nil {
-		return err
-	}
-	if count > 0 {
-		return errors.New("reservation overlaps with existing booking")
-	}
-
 	_, err = tx.Exec(ctx, `
 		INSERT INTO reservations (room_id, start_time, end_time)
 		VALUES ($1, $2, $3)
@@ -49,6 +36,7 @@ func (r *PostgresRepository) CreateReservation(ctx context.Context, reservation 
 }
 
 func (r *PostgresRepository) GetReservations(ctx context.Context, roomID string) ([]models.Reservation, error) {
+
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, room_id, start_time, end_time
 		FROM reservations
@@ -69,10 +57,44 @@ func (r *PostgresRepository) GetReservations(ctx context.Context, roomID string)
 		}
 		reservations = append(reservations, r)
 	}
-	
+
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	
+
 	return reservations, nil
+}
+
+func (r *PostgresRepository) CheckReservation(ctx context.Context, reservation models.Reservation) error{
+
+	var existingReservations []models.Reservation
+	query := `
+		SELECT *
+		FROM reservations
+		WHERE room_id = $1
+		AND (
+			(start_time BETWEEN $2 AND $3)
+			OR (end_time BETWEEN $2 AND $3)
+			OR (start_time < $2 AND end_time > $3)
+		);
+	`
+	rows, err := r.pool.Query(ctx, query, reservation.RoomID, reservation.StartTime, reservation.EndTime)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var existingReservation models.Reservation
+		err := rows.Scan(&existingReservation.ID, &existingReservation.RoomID, &existingReservation.StartTime, &existingReservation.EndTime)
+		if err != nil {
+			return err
+		}
+		existingReservations = append(existingReservations, existingReservation)
+	}
+
+	if len(existingReservations) > 0 {
+		return errors.New("the room is reserved for this time")
+	}
+	return nil
 }

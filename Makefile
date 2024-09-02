@@ -1,10 +1,28 @@
-.PHONY: build run test
+.PHONY: build run test down logs ps
 
 build:
 	docker-compose build
 
 run:
-	docker-compose up
+	docker-compose up -d
 
 test:
-	go test -v ./...
+	docker-compose run --rm app go test -v ./...
+
+
+down:
+	docker-compose down
+
+
+logs:
+	docker-compose logs -f
+
+
+ps:
+	docker-compose ps
+
+
+up: build run
+
+
+restart: down up

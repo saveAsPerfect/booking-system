@@ -31,6 +31,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
+	defer pool.Close()
 
 	repo := postgres.NewPostgresRepository(pool)
 	service := service.NewReservationService(repo)
@@ -62,6 +63,6 @@ func main() {
 		log.Println("error on server shutting down:", err.Error())
 	}
 
-	pool.Close()
+	
 
 }

@@ -21,7 +21,7 @@ func (r *PostgresRepository) CreateReservation(ctx context.Context, reservation 
 		return err
 	}
 	defer tx.Rollback(ctx)
-
+	
 	_, err = tx.Exec(ctx, `
 		INSERT INTO reservations (room_id, start_time, end_time)
 		VALUES ($1, $2, $3)
@@ -64,10 +64,10 @@ func (r *PostgresRepository) GetReservations(ctx context.Context, roomID string)
 }
 
 func (r *PostgresRepository) CheckReservation(ctx context.Context, reservation models.Reservation) error{
-
-	var existingReservations []models.Reservation
+	
+	var count int
 	query := `
-		SELECT *
+		SELECT COUNT(*)
 		FROM reservations
 		WHERE room_id = $1
 		AND (
@@ -76,22 +76,11 @@ func (r *PostgresRepository) CheckReservation(ctx context.Context, reservation m
 			OR (start_time < $2 AND end_time > $3)
 		);
 	`
-	rows, err := r.pool.Query(ctx, query, reservation.RoomID, reservation.StartTime, reservation.EndTime)
-	if err != nil {
+	if err := r.pool.QueryRow(ctx,query,reservation.RoomID,reservation.StartTime,reservation.EndTime).Scan(&count); err != nil{
 		return err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var existingReservation models.Reservation
-		err := rows.Scan(&existingReservation.ID, &existingReservation.RoomID, &existingReservation.StartTime, &existingReservation.EndTime)
-		if err != nil {
-			return err
-		}
-		existingReservations = append(existingReservations, existingReservation)
-	}
-
-	if len(existingReservations) > 0 {
+	if count > 0 {
 		return models.ErrorRoomAlreadyReserved
 	}
 	return nil

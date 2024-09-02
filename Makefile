@@ -1,28 +1,11 @@
-.PHONY: build run test down logs ps
-
-build:
-	docker-compose build
 
 run:
-	docker-compose up -d
+	docker compose up --build -d
 
-test:
-	docker-compose run --rm app go test -v ./...
-
-
-down:
-	docker-compose down
+migrate-up:
+	docker compose run migrate up 
 
 
-logs:
-	docker-compose logs -f
-
-
-ps:
-	docker-compose ps
-
-
-up: build run
-
-
-restart: down up
+clean:
+	docker-compose down --volumes --remove-orphans
+	docker system prune -f

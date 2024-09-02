@@ -27,9 +27,20 @@ func main() {
 		cfg.DB.SSLMode,
 	)
 
-	pool, err := pgxpool.New(context.Background(), dsn)
+	var pool *pgxpool.Pool
+	var err error
+
+	for i := 0; i < 5; i++ {
+		pool, err = pgxpool.New(context.Background(), dsn)
+		if err == nil {
+			break
+		}
+		log.Printf("Unable to connect to database, retrying in 5 seconds: %v\n", err)
+		time.Sleep(5 * time.Second)
+	}
+
 	if err != nil {
-		log.Fatalf("Unable to connect to database: %v\n", err)
+		log.Fatalf("Unable to connect to database after 5 attempts: %v\n", err)
 	}
 	defer pool.Close()
 
@@ -41,7 +52,7 @@ func main() {
 	quit := make(chan os.Signal, 1)
 
 	srv := &http.Server{
-		Addr:           ":" + cfg.Server.Port,
+		Addr:           fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),
 		Handler:        router,
 		MaxHeaderBytes: 1 << 20, // 1 MB
 		ReadTimeout:    10 * time.Second,
@@ -54,7 +65,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("Starting server on %s:%s", cfg.Server.Host, cfg.Server.Port)
+	log.Printf("Starting server on http://%s:%s", cfg.Server.Host, cfg.Server.Port)
 
 	<-quit
 	log.Println("stopping server")
@@ -62,7 +73,5 @@ func main() {
 	if err := srv.Shutdown(context.Background()); err != nil {
 		log.Println("error on server shutting down:", err.Error())
 	}
-
-	
 
 }

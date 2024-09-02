@@ -2,9 +2,10 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
-	"errors"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/saveAsPerfect/booking-system/internal/models"
 	"github.com/saveAsPerfect/booking-system/internal/service"
@@ -17,7 +18,6 @@ type Handler struct {
 func NewHandler(service *service.ReservationService) *Handler {
 	return &Handler{service: service}
 }
-
 
 func (h *Handler) CreateReservation(w http.ResponseWriter, r *http.Request) {
 	var reservation models.Reservation
@@ -47,6 +47,10 @@ func (h *Handler) GetReservations(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if reservations == nil {
+		http.Error(w, "No reservations found", http.StatusNotFound)
 		return
 	}
 

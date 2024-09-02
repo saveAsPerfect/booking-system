@@ -1,26 +1,53 @@
-version: '3'
+version: '3.8'
+
 services:
-  app:
-    build: .
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
     depends_on:
-      - postgres
+      db:
+        condition: service_healthy
     environment:
-      - DB_HOST=postgres
+      - DB_HOST=db
+      - DB_USER=postgres
+      - DB_PASSWORD=123
+      - DB_NAME=bookings
       - DB_PORT=5432
-      - DB_USER=youruser
-      - DB_PASSWORD=yourpassword
-      - DB_NAME=yourdbname
+      - DB_SSLMODE=disable
+    volumes:
+      - ./migrations:/app/migrations
+      - ./configs:/app/configs
+    command: ./main  
 
-  postgres:
+  db:
     image: postgres:13
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=123
       - POSTGRES_DB=bookings
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
 
+  migrate:
+    image: migrate/migrate:v4.15.2
+    profiles: ["tools"]
+   
+    volumes:
+      - ./migrations:/migrations
+    entrypoint: [ "migrate", "-path", "/migrations", "-database", "postgres://postgres:123@db:5432/bookings?sslmode=disable" ]
+    command: [ "up" ]
+    depends_on:
+      db:
+        condition: service_healthy
 volumes:
-  postgres-data:
+  postgres_data:

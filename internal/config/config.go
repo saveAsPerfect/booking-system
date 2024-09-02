@@ -24,24 +24,25 @@ type Config struct {
 }
 
 // LoadConfig ...
-func MustLoad() *Config{
-	viper.SetConfigName("config")  
+func MustLoad() *Config {
+	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath("configs") 
+	viper.AddConfigPath("configs")
+	viper.AddConfigPath("/app/configs")
 
-	// to use existing enviroment virables 
+	// to use existing enviroment virables
 	viper.AutomaticEnv()
-	viper.SetEnvKeyReplacer(strings.NewReplacer(`.`,`_`))
+	viper.SetEnvKeyReplacer(strings.NewReplacer(`.`, `_`))
 
 	if err := viper.ReadInConfig(); err != nil {
 		log.Fatalf("Cannot read config: %v", err)
-		
+
 	}
 
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {
 		log.Fatalf("Error unmarshaling: %v", err)
-		
+
 	}
 
 	return &config
